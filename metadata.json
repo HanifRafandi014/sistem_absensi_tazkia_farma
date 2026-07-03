@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Absensi Kantor Modern",
+  "description": "Sistem Absensi Kantor Modern dengan manajemen staff, penggajian, faktur, laporan grafik, dan list harian.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
