@@ -350,8 +350,8 @@ export default function App() {
             {/* Header Brand Logo */}
             <div className="login-logo-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px' }}>
               <Logo size={64} />
-              <h1 className="login-title" style={{ fontSize: '1.6rem', fontWeight: '800', color: '#1e293b', marginTop: '16px', letterSpacing: '-0.02em' }}>Sistem Absensi & Payroll</h1>
-              <p className="login-subtitle" style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '4px', fontWeight: '500' }}>Dashboard Internal Staf, HR & Admin Office</p>
+              <h1 className="login-title" style={{ fontSize: '1.6rem', fontWeight: '800', color: '#1e293b', marginTop: '16px', letterSpacing: '-0.02em' }}>Sistem Informasi Tazkia Farma</h1>
+              <p className="login-subtitle" style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '4px', fontWeight: '500' }}>Dashboard SITA</p>
             </div>
 
             {authError && (
@@ -416,7 +416,7 @@ export default function App() {
                     backgroundColor: '#ffffff',
                     color: '#1e293b'
                   }}
-                  placeholder="Masukkan username dsb..."
+                  placeholder="Masukkan username"
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
                   required
@@ -472,7 +472,7 @@ export default function App() {
             </form>
 
             <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.7rem', color: '#94a3b8' }}>
-              PT. Solusi Kantor Modern Sejahtera &copy; 2026. Hak Cipta Dilindungi.
+              PT. Tazkia Farma &copy; 2026. Hak Cipta Dilindungi.
             </div>
 
           </div>
