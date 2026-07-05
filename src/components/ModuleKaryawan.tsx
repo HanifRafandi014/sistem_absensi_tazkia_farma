@@ -128,7 +128,7 @@ export const ModuleKaryawan: React.FC<ModuleKaryawanProps> = ({
     setName('');
     setPosition('');
     setPhone('');
-    setBranch('Cabang Jakarta Pusat');
+    setBranch('Apotek Tazkia Farma1');
     setRole('staff');
     setMainJobdesk('');
     setUsername('');
@@ -280,7 +280,7 @@ export const ModuleKaryawan: React.FC<ModuleKaryawanProps> = ({
               name: String(row[namaKey]).trim(),
               position: String(row[jabatanKey]).trim(),
               phone: String(row[phoneKey]).trim(),
-              branch: 'Cabang Jakarta Pusat', // Default
+              branch: 'Apotek Tazkia Farma1', // Default
               role: 'staff',
               mainJobdesk: 'Staff diimpor dari file excel harian.',
               photoImg: null,
@@ -654,10 +654,10 @@ export const ModuleKaryawan: React.FC<ModuleKaryawanProps> = ({
                     onChange={(e) => setBranch(e.target.value)}
                     required
                   >
-                    <option value="Cabang Jakarta Pusat">Cabang Jakarta Pusat</option>
-                    <option value="Cabang Bandung Timur">Cabang Bandung Timur</option>
-                    <option value="Cabang Surabaya Barat">Cabang Surabaya Barat</option>
-                    <option value="Cabang Head Office">Cabang Head Office</option>
+                    <option value="Apotek Tazkia Farma1">Apotek Tazkia Farma1</option>
+                    <option value="Apotek Kedai Sehat">Apotek Kedai Sehat</option>
+                    <option value="Apotek Surya Sehat">Apotek Surya Sehat</option>
+                    <option value="Apotek Wonodadi">Apotek Wonodadi</option>
                   </select>
                 </div>
 

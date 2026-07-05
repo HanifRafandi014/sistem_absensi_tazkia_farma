@@ -134,10 +134,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <LogoSvg size={40} />
           <div style={{ marginLeft: '12px' }}>
             <h2 className="sidebar-title" style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', margin: 0, lineHeight: 1.2 }}>
-              PresensiHub
+              SITA
             </h2>
             <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, display: 'block', marginTop: '2px' }}>
-              SaaS Office Suite
+              Sistem Informasi Tazkia Farma
             </span>
           </div>
         </div>

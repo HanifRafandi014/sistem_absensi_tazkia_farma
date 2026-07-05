@@ -33,21 +33,55 @@ import ModulePayroll from './components/ModulePayroll';
 import ModuleSqlExport from './components/ModuleSqlExport';
 
 export default function App() {
-  // --- CORE SYSTEM DATABASES (React States) ---
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
-  const [attendances, setAttendances] = useState<Attendance[]>(INITIAL_ATTENDANCE);
-  const [dailyReports, setDailyReports] = useState<DailyReport[]>(INITIAL_DAILY_REPORTS);
-  const [shifts, setShifts] = useState<ShiftSchedule[]>(INITIAL_SHIFTS);
-  const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
-  const [payrolls, setPayrolls] = useState<Payroll[]>(INITIAL_PAYROLL);
+  // --- 1. CORE SYSTEM DATABASES (React States) ---
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
+  const [shifts, setShifts] = useState<ShiftSchedule[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payrolls, setPayrolls] = useState<Payroll[]>([]);
 
-  // --- AUTHENTICATION & PORTAL STATES ---
-  const [currentUser, setCurrentUser] = useState<Employee | null>(null);
+  // --- 2. AUTHENTICATION & PORTAL STATES ---
+  const [currentUser, setCurrentUser] = useState<Employee | null>(() => {
+    const savedUser = localStorage.getItem('sita_user_session');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  // 📦 Kelompokkan state login di sini (Pindahkan dari bawah ke sini)
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // --- SYSTEM DATE & TIME ENGINE (Real-time Asia/Jakarta) ---
+  // --- 3. SINKRONISASI DATA DARI API BACKEND (Taruh setelah semua state di atas) ---
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        const resEmp = await fetch('/api/employees');
+        if (resEmp.ok) setEmployees(await resEmp.json());
+
+        const resAtt = await fetch('/api/attendance');
+        if (resAtt.ok) setAttendances(await resAtt.json());
+
+        const resShifts = await fetch('/api/shifts');
+        if (resShifts.ok) setShifts(await resShifts.json());
+
+        const resDaily = await fetch('/api/daily-reports');
+        if (resDaily.ok) setDailyReports(await resDaily.json());
+
+        const resInvoices = await fetch('/api/invoices');
+        if (resInvoices.ok) setInvoices(await resInvoices.json());
+
+        const resPayroll = await fetch('/api/payroll');
+        if (resPayroll.ok) setPayrolls(await resPayroll.json());
+      } catch (err) {
+        console.error("Gagal mengambil data dari API Server:", err);
+      }
+    };
+
+    fetchAllData();
+  }, []);
+
+  // --- 4. SYSTEM DATE & TIME ENGINE (Real-time Asia/Jakarta) ---
   const [simulatedDate, setSimulatedDate] = useState(() => getJakartaDateTime().dateStr);
   const [simulatedTime, setSimulatedTime] = useState(() => getJakartaDateTime().timeStr);
 
@@ -100,71 +134,224 @@ export default function App() {
   // --- CORE APP ACTION HANDLERS ---
 
   // Check-In and Check-Out Attendance
-  const handleRecordAttendance = (newAtt: Attendance) => {
-    // Check if check-in or update (check-out)
-    const existingIndex = attendances.findIndex(att => att.employeeId === newAtt.employeeId && att.date === newAtt.date);
-    if (existingIndex !== -1) {
-      const updated = [...attendances];
-      updated[existingIndex] = newAtt;
-      setAttendances(updated);
-    } else {
-      setAttendances([newAtt, ...attendances]);
+  const handleRecordAttendance = async (newAtt: Attendance) => {
+    try {
+      const response = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAtt)
+      });
+      
+      if (response.ok) {
+        const existingIndex = attendances.findIndex(att => att.employeeId === newAtt.employeeId && att.date === newAtt.date);
+        if (existingIndex !== -1) {
+          const updated = [...attendances];
+          updated[existingIndex] = newAtt;
+          setAttendances(updated);
+        } else {
+          setAttendances([newAtt, ...attendances]);
+        }
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan absensi ke database:", err);
     }
   };
 
   // Add Daily Report Log
-  const handleAddReport = (newRep: DailyReport) => {
-    setDailyReports([newRep, ...dailyReports]);
+  const handleAddReport = async (newRep: DailyReport) => {
+    try {
+      const response = await fetch('/api/daily-reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRep)
+      });
+      if (response.ok) {
+        setDailyReports([newRep, ...dailyReports]);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan laporan harian ke database:", err);
+    }
   };
 
   // Assign New Shift Schedule (Admin)
-  const handleAddShift = (newShift: ShiftSchedule) => {
-    setShifts([newShift, ...shifts]);
+  const handleAddShift = async (newShift: ShiftSchedule) => {
+    try {
+      const response = await fetch('/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newShift)
+      });
+      if (response.ok) {
+        setShifts([newShift, ...shifts]);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan shift ke database:", err);
+    }
   };
 
   // Delete Shift Schedule (Admin)
-  const handleDeleteShift = (id: string) => {
-    setShifts(shifts.filter(s => s.id !== id));
+  const handleDeleteShift = async (id: string) => {
+    try {
+      const response = await fetch(`/api/shifts/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setShifts(shifts.filter(s => s.id !== id));
+      }
+    } catch (err) {
+      console.error("Gagal menghapus shift dari database:", err);
+    }
   };
 
   // Add Employee (Admin CRUD)
-  const handleAddEmployee = (newEmp: Employee) => {
-    setEmployees([...employees, newEmp]);
+  const handleAddEmployee = async (newEmp: Employee) => {
+    try {
+      const response = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEmp)
+      });
+      if (response.ok) {
+        setEmployees([...employees, newEmp]);
+      }
+    } catch (err) {
+      console.error("Gagal menambah karyawan ke database:", err);
+    }
   };
 
   // Update Employee (Admin CRUD)
-  const handleUpdateEmployee = (updatedEmp: Employee) => {
-    setEmployees(employees.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
+  const handleUpdateEmployee = async (updatedEmp: Employee) => {
+    try {
+      // Mengirim gabungan camelCase dan snake_case agar klop dengan kueri UPDATE di server.ts Anda
+      const bodyData = {
+        ...updatedEmp,
+        main_jobdesk: updatedEmp.mainJobdesk,
+        basic_salary: updatedEmp.basicSalary,
+        bonus: updatedEmp.bonus
+      };
+
+      const response = await fetch(`/api/employees/${updatedEmp.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyData)
+      });
+
+      if (response.ok) {
+        setEmployees(employees.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
+        
+        // Jika karyawan yang sedang login merubah datanya sendiri, perbarui session di localStorage
+        if (currentUser && currentUser.id === updatedEmp.id) {
+          setCurrentUser(updatedEmp);
+          localStorage.setItem('sita_user_session', JSON.stringify(updatedEmp));
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memperbarui data karyawan ke database:", err);
+    }
   };
 
   // Delete Employee (Admin CRUD)
-  const handleDeleteEmployee = (id: string) => {
-    setEmployees(employees.filter(emp => emp.id !== id));
+  const handleDeleteEmployee = async (id: string) => {
+    try {
+      const response = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setEmployees(employees.filter(emp => emp.id !== id));
+      }
+    } catch (err) {
+      console.error("Gagal menghapus karyawan dari database:", err);
+    }
   };
 
   // Bulk Delete Employees (Admin CRUD)
-  const handleBulkDeleteEmployees = (ids: string[]) => {
-    setEmployees(employees.filter(emp => !ids.includes(emp.id)));
+  const handleBulkDeleteEmployees = async (ids: string[]) => {
+    try {
+      const response = await fetch('/api/employees/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      if (response.ok) {
+        setEmployees(employees.filter(emp => !ids.includes(emp.id)));
+      }
+    } catch (err) {
+      console.error("Gagal menghapus massal karyawan:", err);
+    }
   };
 
   // Excel Bulk Import Employees (Admin)
-  const handleImportEmployees = (imported: Employee[]) => {
-    setEmployees([...employees, ...imported]);
+  const handleImportEmployees = async (imported: Employee[]) => {
+    try {
+      const promises = imported.map(emp => 
+        fetch('/api/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(emp)
+        })
+      );
+      await Promise.all(promises);
+      setEmployees([...employees, ...imported]);
+    } catch (err) {
+      console.error("Gagal melakukan impor massal ke database:", err);
+    }
   };
 
   // Input Invoice (Admin)
-  const handleAddInvoice = (newInv: Invoice) => {
-    setInvoices([newInv, ...invoices]);
+  const handleAddInvoice = async (newInv: Invoice) => {
+    try {
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newInv)
+      });
+      if (response.ok) {
+        setInvoices([newInv, ...invoices]);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan invoice ke database:", err);
+    }
   };
 
   // Update Employee Salary structure (Finance)
-  const handleUpdateSalary = (empId: string, basic: number, bonus: number) => {
-    setEmployees(employees.map(emp => emp.id === empId ? { ...emp, basicSalary: basic, bonus } : emp));
+  const handleUpdateSalary = async (empId: string, basic: number, bonus: number) => {
+    const empToUpdate = employees.find(e => e.id === empId);
+    if (!empToUpdate) return;
+
+    const updatedEmp = { ...empToUpdate, basicSalary: basic, bonus };
+    try {
+      // Mengirim gabungan properti camelCase dan snake_case agar klop dengan server.ts
+      const bodyData = {
+        ...updatedEmp,
+        main_jobdesk: empToUpdate.mainJobdesk,
+        basic_salary: basic,
+        bonus: bonus
+      };
+
+      const response = await fetch(`/api/employees/${empId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyData)
+      });
+
+      if (response.ok) {
+        setEmployees(employees.map(emp => emp.id === empId ? updatedEmp : emp));
+      }
+    } catch (err) {
+      console.error("Gagal merubah data struktur gaji di database:", err);
+    }
   };
 
   // Execute Payment (Finance)
-  const handlePaySalary = (newPayroll: Payroll) => {
-    setPayrolls([newPayroll, ...payrolls]);
+  const handlePaySalary = async (newPayroll: Payroll) => {
+    try {
+      const response = await fetch('/api/payroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPayroll)
+      });
+      if (response.ok) {
+        setPayrolls([newPayroll, ...payrolls]);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan payroll ke database:", err);
+    }
   };
 
   // Login handler
@@ -178,12 +365,13 @@ export default function App() {
       return;
     }
 
-    // Hash user-input password using SHA-256 helper
     const hashedInput = await hashPassword(loginPassword);
 
-    // For ease of testing, permit simple direct comparisons for preset accounts (e.g. "123456") or exact hash match
     if (loginPassword === user.passwordHash || hashedInput === user.passwordHash || user.passwordHash === '123456') {
+      // SIMPAN KE STATE & LOCALSTORAGE
       setCurrentUser(user);
+      localStorage.setItem('sita_user_session', JSON.stringify(user));
+      
       setLoginUsername('');
       setLoginPassword('');
     } else {
@@ -191,11 +379,12 @@ export default function App() {
     }
   };
 
-  // Quick Account Login Selector
+// Quick Account Login Selector
   const triggerQuickLogin = (role: UserRole) => {
     const matched = employees.find(emp => emp.role === role);
     if (matched) {
       setCurrentUser(matched);
+      localStorage.setItem('sita_user_session', JSON.stringify(matched)); // Tambahkan ini
       setAuthError(null);
     }
   };
@@ -203,13 +392,17 @@ export default function App() {
   const triggerQuickLoginByUsername = (username: string) => {
     const matched = employees.find(emp => emp.username.trim().toLowerCase() === username.trim().toLowerCase());
     if (matched) {
+      // SIMPAN KE STATE & LOCALSTORAGE
       setCurrentUser(matched);
+      localStorage.setItem('sita_user_session', JSON.stringify(matched));
       setAuthError(null);
     }
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
+    // HAPUS DARI LOCALSTORAGE SAAT LOGOUT
+    localStorage.removeItem('sita_user_session');
     setSidebarOpen(false);
   };
 
