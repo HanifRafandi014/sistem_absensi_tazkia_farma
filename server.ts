@@ -152,9 +152,11 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Body parsers for file attachments & base64 photos (CV, Ijazah, Foto, Invoice)
+  // --- 1. BODY PARSERS (Wajib Paling Atas) ---
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+  // --- 2. ENDPOINT API EXPRESS ---
 
   // API Status & Configuration Endpoint
   app.get('/api/status', (req, res) => {
@@ -168,7 +170,7 @@ async function startServer() {
     });
   });
 
-  // --- 1. EMPLOYEES API ---
+  // --- EMPLOYEES API ---
   app.get('/api/employees', async (req, res) => {
     if (isDbConnected && pool) {
       try {
@@ -181,7 +183,7 @@ async function startServer() {
           branch: r.branch,
           role: r.role,
           mainJobdesk: r.main_jobdesk || '',
-          signatureImg: null, // stored locally in component or session for demo
+          signatureImg: null,
           cvFile: null,
           diplomaFile: null,
           photoImg: null,
@@ -312,8 +314,7 @@ async function startServer() {
     }
   });
 
-
-  // --- 2. ATTENDANCE API ---
+  // --- ATTENDANCE API ---
   app.get('/api/attendance', async (req, res) => {
     if (isDbConnected && pool) {
       try {
@@ -351,7 +352,6 @@ async function startServer() {
     const att = req.body;
     if (isDbConnected && pool) {
       try {
-        // Upsert by ID or employeeId+date
         const [existing]: any = await pool.query('SELECT id FROM attendance WHERE id=? OR (employee_id=? AND date=?)', [att.id, att.employeeId, att.date]);
         if (existing.length > 0) {
           const idToUpdate = existing[0].id;
@@ -395,8 +395,7 @@ async function startServer() {
     }
   });
 
-
-  // --- 3. DAILY REPORTS API ---
+  // --- DAILY REPORTS API ---
   app.get('/api/daily-reports', async (req, res) => {
     if (isDbConnected && pool) {
       try {
@@ -461,8 +460,7 @@ async function startServer() {
     }
   });
 
-
-  // --- 4. SHIFTS API ---
+  // --- SHIFTS API ---
   app.get('/api/shifts', async (req, res) => {
     if (isDbConnected && pool) {
       try {
@@ -529,8 +527,7 @@ async function startServer() {
     }
   });
 
-
-  // --- 5. INVOICES API ---
+  // --- INVOICES API ---
   app.get('/api/invoices', async (req, res) => {
     if (isDbConnected && pool) {
       try {
@@ -585,8 +582,7 @@ async function startServer() {
     }
   });
 
-
-  // --- 6. PAYROLL API ---
+  // --- PAYROLL API ---
   app.get('/api/payroll', async (req, res) => {
     if (isDbConnected && pool) {
       try {
@@ -654,8 +650,7 @@ async function startServer() {
     }
   });
 
-
-  // --- VITE MIDDLEWARE OR STATIC SERVER ---
+  // --- 3. VITE MIDDLEWARE OR STATIC SERVER (Wajib di Paling Bawah) ---
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -670,6 +665,7 @@ async function startServer() {
     });
   }
 
+  // --- 4. LISTEN SERVER ---
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n======================================================`);
     console.log(`🚀 SERVER SEDANG BERJALAN DI PORT ${PORT}!`);
