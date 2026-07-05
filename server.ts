@@ -108,6 +108,16 @@ import('./src/initialData.js')
   });
 
 async function connectDatabase() {
+  // Cegah serverless function Vercel crash/timeout karena mencoba menyambung ke localhost laptop Anda
+  if (process.env.VERCEL) {
+    console.log(`\n======================================================`);
+    console.log(`ℹ️ INTEGRASI VERCEL TERDETEKSI ONLINE.`);
+    console.log(`Aplikasi otomatis beralih ke MODE DEMO DENGAN PERSISTENCE MEMORI.`);
+    console.log(`======================================================\n`);
+    isDbConnected = false;
+    return;
+  }
+
   try {
     pool = mysql.createPool(dbConfig);
     // Test the connection
@@ -651,7 +661,7 @@ async function startServer() {
   });
 
   // --- 3. VITE MIDDLEWARE OR STATIC SERVER (Wajib di Paling Bawah) ---
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -665,8 +675,8 @@ async function startServer() {
     });
   }
 
-// --- 4. LISTEN SERVER (Hanya berjalan di Localhost / Development) ---
-  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  // --- 4. LISTEN SERVER (Hanya berjalan di Localhost / Development komputer lokal) ---
+  if (!process.env.VERCEL) {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`\n======================================================`);
       console.log(`🚀 SERVER SEDANG BERJALAN DI PORT ${PORT}!`);
@@ -674,10 +684,13 @@ async function startServer() {
       console.log(`======================================================\n`);
     });
   }
+
+  // Mengembalikan instance app Express untuk digunakan oleh Vercel engine
+  return app;
 }
 
-// Eksekusi fungsi setup basis data
-startServer();
+// Eksekusi pemanggilan inisialisasi serverless
+const appPromise = startServer();
 
 // EXPORT APP UNTUK VERCEL SERVERLESS HANDLER
-export default startServer;
+export default appPromise;
