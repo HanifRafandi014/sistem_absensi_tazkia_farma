@@ -665,14 +665,19 @@ async function startServer() {
     });
   }
 
-  // --- 4. LISTEN SERVER ---
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n======================================================`);
-    console.log(`🚀 SERVER SEDANG BERJALAN DI PORT ${PORT}!`);
-    console.log(`URL: http://localhost:${PORT}`);
-    console.log(`Menyajikan frontend absensi dan API sinkronisasi...`);
-    console.log(`======================================================\n`);
-  });
+// --- 4. LISTEN SERVER (Hanya berjalan di Localhost / Development) ---
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`\n======================================================`);
+      console.log(`🚀 SERVER SEDANG BERJALAN DI PORT ${PORT}!`);
+      console.log(`URL: http://localhost:${PORT}`);
+      console.log(`======================================================\n`);
+    });
+  }
 }
 
+// Eksekusi fungsi setup basis data
 startServer();
+
+// EXPORT APP UNTUK VERCEL SERVERLESS HANDLER
+export default startServer;
