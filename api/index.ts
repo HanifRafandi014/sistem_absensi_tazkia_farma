@@ -38,7 +38,7 @@ const fallbackDb: {
 };
 
 // Seed fallback database with initial data
-import('./src/initialData.js')
+import('../src/initialData.ts')
   .then((initialData) => {
     fallbackDb.employees = initialData.INITIAL_EMPLOYEES.map(e => ({
       id: e.id,
