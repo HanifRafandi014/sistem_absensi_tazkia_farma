@@ -4,6 +4,16 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 
+// --- 1. SINKRONISASI MOCK DATA (Wajib di Atas untuk Vercel Compiler) ---
+import { 
+  INITIAL_EMPLOYEES, 
+  INITIAL_ATTENDANCE, 
+  INITIAL_DAILY_REPORTS, 
+  INITIAL_SHIFTS, 
+  INITIAL_INVOICES, 
+  INITIAL_PAYROLL 
+} from '../src/initialData';
+
 // Load environment variables
 dotenv.config();
 
@@ -20,7 +30,7 @@ const dbConfig = {
 let pool: mysql.Pool | null = null;
 let isDbConnected = false;
 
-// Mock database fallback for AI Studio Sandbox preview (to prevent crashes when local database is offline)
+// Mock database fallback for Vercel/AI Studio Sandbox preview
 const fallbackDb: {
   employees: any[];
   attendance: any[];
@@ -37,75 +47,73 @@ const fallbackDb: {
   payroll: []
 };
 
-// Seed fallback database with initial data
-import('../src/initialData.ts')
-  .then((initialData) => {
-    fallbackDb.employees = initialData.INITIAL_EMPLOYEES.map(e => ({
-      id: e.id,
-      name: e.name,
-      position: e.position,
-      phone: e.phone,
-      branch: e.branch,
-      role: e.role,
-      main_jobdesk: e.mainJobdesk,
-      basic_salary: e.basicSalary,
-      bonus: e.bonus,
-      username: e.username,
-      password_hash: e.passwordHash,
-    }));
-    fallbackDb.attendance = initialData.INITIAL_ATTENDANCE.map(a => ({
-      id: a.id,
-      employee_id: a.employeeId,
-      employee_name: a.employeeName,
-      date: a.date,
-      check_in_time: a.checkInTime,
-      check_out_time: a.checkOutTime,
-      status: a.status,
-      keterangan: a.keterangan,
-    }));
-    fallbackDb.daily_reports = initialData.INITIAL_DAILY_REPORTS.map(r => ({
-      id: r.id,
-      employee_id: r.employeeId,
-      employee_name: r.employeeName,
-      position: r.position,
-      branch_name: r.branchName,
-      shift: r.shift,
-      date: r.date,
-      daily_task: r.dailyTask,
-      shift_revenue: r.shiftRevenue,
-    }));
-    fallbackDb.shifts = initialData.INITIAL_SHIFTS.map(s => ({
-      id: s.id,
-      employee_id: s.employeeId,
-      employee_name: s.employeeName,
-      shift_type: s.shiftType,
-      date: s.date,
-    }));
-    fallbackDb.invoices = initialData.INITIAL_INVOICES.map(i => ({
-      id: i.id,
-      invoice_no: i.invoiceNo,
-      branch_name: i.branchName,
-      date: i.date,
-      total: i.total,
-      invoice_photo: i.invoicePhoto,
-    }));
-    fallbackDb.payroll = initialData.INITIAL_PAYROLL.map(p => ({
-      id: p.id,
-      employee_id: p.employeeId,
-      employee_name: p.employeeName,
-      position: p.position,
-      basic_salary: p.basicSalary,
-      bonus: p.bonus,
-      total_salary: p.totalSalary,
-      period: p.period,
-      date_paid: p.datePaid,
-      status: p.status,
-    }));
-    console.log('Seeded memory-fallback database successfully.');
-  })
-  .catch((err) => {
-    console.error('Failed to seed memory-fallback database:', err);
-  });
+// --- 2. SEED FALLBACK DATABASE SECARA SINKRONUS ---
+try {
+  fallbackDb.employees = INITIAL_EMPLOYEES.map(e => ({
+    id: e.id,
+    name: e.name,
+    position: e.position,
+    phone: e.phone,
+    branch: e.branch,
+    role: e.role,
+    main_jobdesk: e.mainJobdesk,
+    basic_salary: e.basicSalary,
+    bonus: e.bonus,
+    username: e.username,
+    password_hash: e.passwordHash,
+  }));
+  fallbackDb.attendance = INITIAL_ATTENDANCE.map(a => ({
+    id: a.id,
+    employee_id: a.employeeId,
+    employee_name: a.employeeName,
+    date: a.date,
+    check_in_time: a.checkInTime,
+    check_out_time: a.checkOutTime,
+    status: a.status,
+    keterangan: a.keterangan,
+  }));
+  fallbackDb.daily_reports = INITIAL_DAILY_REPORTS.map(r => ({
+    id: r.id,
+    employee_id: r.employeeId,
+    employee_name: r.employeeName,
+    position: r.position,
+    branch_name: r.branchName,
+    shift: r.shift,
+    date: r.date,
+    daily_task: r.dailyTask,
+    shift_revenue: r.shiftRevenue,
+  }));
+  fallbackDb.shifts = INITIAL_SHIFTS.map(s => ({
+    id: s.id,
+    employee_id: s.employeeId,
+    employee_name: s.employeeName,
+    shift_type: s.shiftType,
+    date: s.date,
+  }));
+  fallbackDb.invoices = INITIAL_INVOICES.map(i => ({
+    id: i.id,
+    invoice_no: i.invoiceNo,
+    branch_name: i.branchName,
+    date: i.date,
+    total: i.total,
+    invoice_photo: i.invoicePhoto,
+  }));
+  fallbackDb.payroll = INITIAL_PAYROLL.map(p => ({
+    id: p.id,
+    employee_id: p.employeeId,
+    employee_name: p.employeeName,
+    position: p.position,
+    basic_salary: p.basicSalary,
+    bonus: p.bonus,
+    total_salary: p.totalSalary,
+    period: p.period,
+    date_paid: p.datePaid,
+    status: p.status,
+  }));
+  console.log('Seeded memory-fallback database successfully.');
+} catch (err) {
+  console.error('Failed to seed memory-fallback database:', err);
+}
 
 async function connectDatabase() {
   // Cegah serverless function Vercel crash/timeout karena mencoba menyambung ke localhost laptop Anda
@@ -130,7 +138,7 @@ async function connectDatabase() {
     connection.release();
     isDbConnected = true;
 
-    // Create table shifts if not exists (other tables should exist from user import, but let's make sure shifts is handled)
+    // Create table shifts if not exists
     try {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS \`shifts\` (
@@ -162,11 +170,11 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // --- 1. BODY PARSERS (Wajib Paling Atas) ---
+  // --- 3. BODY PARSERS (Wajib Paling Atas) ---
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  // --- 2. ENDPOINT API EXPRESS ---
+  // --- 4. ENDPOINT API EXPRESS ---
 
   // API Status & Configuration Endpoint
   app.get('/api/status', (req, res) => {
@@ -660,7 +668,7 @@ async function startServer() {
     }
   });
 
-  // --- 3. VITE MIDDLEWARE OR STATIC SERVER (Wajib di Paling Bawah) ---
+  // --- 5. VITE MIDDLEWARE OR STATIC SERVER (Wajib di Paling Bawah) ---
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -675,7 +683,7 @@ async function startServer() {
     });
   }
 
-  // --- 4. LISTEN SERVER (Hanya berjalan di Localhost / Development komputer lokal) ---
+  // --- 6. LISTEN SERVER (Hanya berjalan di Localhost / Development komputer lokal) ---
   if (!process.env.VERCEL) {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`\n======================================================`);
@@ -689,7 +697,7 @@ async function startServer() {
   return app;
 }
 
-// Eksekusi pemanggilan inisialisasi serverless
+// Inisialisasi pembentukan rute aplikasi Express
 const appPromise = startServer();
 
 // EXPORT APP UNTUK VERCEL SERVERLESS HANDLER
