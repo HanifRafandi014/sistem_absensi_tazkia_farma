@@ -33,13 +33,36 @@ import ModulePayroll from './components/ModulePayroll';
 import ModuleSqlExport from './components/ModuleSqlExport';
 
 export default function App() {
-  // --- 1. CORE SYSTEM DATABASES (React States) ---
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [attendances, setAttendances] = useState<Attendance[]>([]);
-  const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
-  const [shifts, setShifts] = useState<ShiftSchedule[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [payrolls, setPayrolls] = useState<Payroll[]>([]);
+  // --- 1. CORE SYSTEM DATABASES (React States linked with LocalStorage) ---
+  const [employees, setEmployees] = useState<Employee[]>(() => {
+    const saved = localStorage.getItem('sita_employees');
+    return saved ? JSON.parse(saved) : INITIAL_EMPLOYEES;
+  });
+
+  const [attendances, setAttendances] = useState<Attendance[]>(() => {
+    const saved = localStorage.getItem('sita_attendances');
+    return saved ? JSON.parse(saved) : INITIAL_ATTENDANCE;
+  });
+
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => {
+    const saved = localStorage.getItem('sita_daily_reports');
+    return saved ? JSON.parse(saved) : INITIAL_DAILY_REPORTS;
+  });
+
+  const [shifts, setShifts] = useState<ShiftSchedule[]>(() => {
+    const saved = localStorage.getItem('sita_shifts');
+    return saved ? JSON.parse(saved) : INITIAL_SHIFTS;
+  });
+
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    const saved = localStorage.getItem('sita_invoices');
+    return saved ? JSON.parse(saved) : INITIAL_INVOICES;
+  });
+
+  const [payrolls, setPayrolls] = useState<Payroll[]>(() => {
+    const saved = localStorage.getItem('sita_payrolls');
+    return saved ? JSON.parse(saved) : INITIAL_PAYROLL;
+  });
 
   // --- 2. AUTHENTICATION & PORTAL STATES ---
   const [currentUser, setCurrentUser] = useState<Employee | null>(() => {
@@ -47,41 +70,11 @@ export default function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // 📦 Kelompokkan state login di sini (Pindahkan dari bawah ke sini)
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // --- 3. SINKRONISASI DATA DARI API BACKEND (Taruh setelah semua state di atas) ---
-  useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        const resEmp = await fetch('/api/employees');
-        if (resEmp.ok) setEmployees(await resEmp.json());
-
-        const resAtt = await fetch('/api/attendance');
-        if (resAtt.ok) setAttendances(await resAtt.json());
-
-        const resShifts = await fetch('/api/shifts');
-        if (resShifts.ok) setShifts(await resShifts.json());
-
-        const resDaily = await fetch('/api/daily-reports');
-        if (resDaily.ok) setDailyReports(await resDaily.json());
-
-        const resInvoices = await fetch('/api/invoices');
-        if (resInvoices.ok) setInvoices(await resInvoices.json());
-
-        const resPayroll = await fetch('/api/payroll');
-        if (resPayroll.ok) setPayrolls(await resPayroll.json());
-      } catch (err) {
-        console.error("Gagal mengambil data dari API Server:", err);
-      }
-    };
-
-    fetchAllData();
-  }, []);
-
-  // --- 4. SYSTEM DATE & TIME ENGINE (Real-time Asia/Jakarta) ---
+  // --- 3. SYSTEM DATE & TIME ENGINE (Real-time Asia/Jakarta) ---
   const [simulatedDate, setSimulatedDate] = useState(() => getJakartaDateTime().dateStr);
   const [simulatedTime, setSimulatedTime] = useState(() => getJakartaDateTime().timeStr);
 
@@ -91,6 +84,31 @@ export default function App() {
 
   // --- VISUAL DESIGN PRESETS HUB ENGINE ---
   const [designTheme, setDesignTheme] = useState<string>('clean-light');
+
+  // --- PERSISTENCE AUTOMATION EFFECTS ---
+  useEffect(() => {
+    localStorage.setItem('sita_employees', JSON.stringify(employees));
+  }, [employees]);
+
+  useEffect(() => {
+    localStorage.setItem('sita_attendances', JSON.stringify(attendances));
+  }, [attendances]);
+
+  useEffect(() => {
+    localStorage.setItem('sita_daily_reports', JSON.stringify(dailyReports));
+  }, [dailyReports]);
+
+  useEffect(() => {
+    localStorage.setItem('sita_shifts', JSON.stringify(shifts));
+  }, [shifts]);
+
+  useEffect(() => {
+    localStorage.setItem('sita_invoices', JSON.stringify(invoices));
+  }, [invoices]);
+
+  useEffect(() => {
+    localStorage.setItem('sita_payrolls', JSON.stringify(payrolls));
+  }, [payrolls]);
 
   useEffect(() => {
     // Apply theme class to document element
@@ -124,234 +142,86 @@ export default function App() {
   useEffect(() => {
     if (currentUser) {
       if (currentUser.role === 'owner') {
-        setCurrentTab('laporan'); // Owner doesn't do check-ins or daily logs, defaults to reports
+        setCurrentTab('laporan'); // Owner defaults to reports
       } else {
         setCurrentTab('absensi'); // Staff, Finance, and Staff IT (admin) do check-ins
       }
     }
   }, [currentUser]);
 
-  // --- CORE APP ACTION HANDLERS ---
+  // --- CORE APP ACTION HANDLERS (Now 100% Client-Side Pure Sync) ---
 
   // Check-In and Check-Out Attendance
-  const handleRecordAttendance = async (newAtt: Attendance) => {
-    try {
-      const response = await fetch('/api/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newAtt)
-      });
-      
-      if (response.ok) {
-        const existingIndex = attendances.findIndex(att => att.employeeId === newAtt.employeeId && att.date === newAtt.date);
-        if (existingIndex !== -1) {
-          const updated = [...attendances];
-          updated[existingIndex] = newAtt;
-          setAttendances(updated);
-        } else {
-          setAttendances([newAtt, ...attendances]);
-        }
-      }
-    } catch (err) {
-      console.error("Gagal menyimpan absensi ke database:", err);
+  const handleRecordAttendance = (newAtt: Attendance) => {
+    const existingIndex = attendances.findIndex(att => att.employeeId === newAtt.employeeId && att.date === newAtt.date);
+    if (existingIndex !== -1) {
+      const updated = [...attendances];
+      updated[existingIndex] = newAtt;
+      setAttendances(updated);
+    } else {
+      setAttendances([newAtt, ...attendances]);
     }
   };
 
   // Add Daily Report Log
-  const handleAddReport = async (newRep: DailyReport) => {
-    try {
-      const response = await fetch('/api/daily-reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRep)
-      });
-      if (response.ok) {
-        setDailyReports([newRep, ...dailyReports]);
-      }
-    } catch (err) {
-      console.error("Gagal menyimpan laporan harian ke database:", err);
-    }
+  const handleAddReport = (newRep: DailyReport) => {
+    setDailyReports([newRep, ...dailyReports]);
   };
 
   // Assign New Shift Schedule (Admin)
-  const handleAddShift = async (newShift: ShiftSchedule) => {
-    try {
-      const response = await fetch('/api/shifts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newShift)
-      });
-      if (response.ok) {
-        setShifts([newShift, ...shifts]);
-      }
-    } catch (err) {
-      console.error("Gagal menyimpan shift ke database:", err);
-    }
+  const handleAddShift = (newShift: ShiftSchedule) => {
+    setShifts([newShift, ...shifts]);
   };
 
   // Delete Shift Schedule (Admin)
-  const handleDeleteShift = async (id: string) => {
-    try {
-      const response = await fetch(`/api/shifts/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        setShifts(shifts.filter(s => s.id !== id));
-      }
-    } catch (err) {
-      console.error("Gagal menghapus shift dari database:", err);
-    }
+  const handleDeleteShift = (id: string) => {
+    setShifts(shifts.filter(s => s.id !== id));
   };
 
   // Add Employee (Admin CRUD)
-  const handleAddEmployee = async (newEmp: Employee) => {
-    try {
-      const response = await fetch('/api/employees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newEmp)
-      });
-      if (response.ok) {
-        setEmployees([...employees, newEmp]);
-      }
-    } catch (err) {
-      console.error("Gagal menambah karyawan ke database:", err);
-    }
+  const handleAddEmployee = (newEmp: Employee) => {
+    setEmployees([...employees, newEmp]);
   };
 
   // Update Employee (Admin CRUD)
-  const handleUpdateEmployee = async (updatedEmp: Employee) => {
-    try {
-      // Mengirim gabungan camelCase dan snake_case agar klop dengan kueri UPDATE di server.ts Anda
-      const bodyData = {
-        ...updatedEmp,
-        main_jobdesk: updatedEmp.mainJobdesk,
-        basic_salary: updatedEmp.basicSalary,
-        bonus: updatedEmp.bonus
-      };
-
-      const response = await fetch(`/api/employees/${updatedEmp.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData)
-      });
-
-      if (response.ok) {
-        setEmployees(employees.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
-        
-        // Jika karyawan yang sedang login merubah datanya sendiri, perbarui session di localStorage
-        if (currentUser && currentUser.id === updatedEmp.id) {
-          setCurrentUser(updatedEmp);
-          localStorage.setItem('sita_user_session', JSON.stringify(updatedEmp));
-        }
-      }
-    } catch (err) {
-      console.error("Gagal memperbarui data karyawan ke database:", err);
+  const handleUpdateEmployee = (updatedEmp: Employee) => {
+    setEmployees(employees.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
+    
+    // Jika user saat ini memperbarui datanya sendiri, sesuaikan sesi aktif
+    if (currentUser && currentUser.id === updatedEmp.id) {
+      setCurrentUser(updatedEmp);
+      localStorage.setItem('sita_user_session', JSON.stringify(updatedEmp));
     }
   };
 
   // Delete Employee (Admin CRUD)
-  const handleDeleteEmployee = async (id: string) => {
-    try {
-      const response = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        setEmployees(employees.filter(emp => emp.id !== id));
-      }
-    } catch (err) {
-      console.error("Gagal menghapus karyawan dari database:", err);
-    }
+  const handleDeleteEmployee = (id: string) => {
+    setEmployees(employees.filter(emp => emp.id !== id));
   };
 
   // Bulk Delete Employees (Admin CRUD)
-  const handleBulkDeleteEmployees = async (ids: string[]) => {
-    try {
-      const response = await fetch('/api/employees/bulk-delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids })
-      });
-      if (response.ok) {
-        setEmployees(employees.filter(emp => !ids.includes(emp.id)));
-      }
-    } catch (err) {
-      console.error("Gagal menghapus massal karyawan:", err);
-    }
+  const handleBulkDeleteEmployees = (ids: string[]) => {
+    setEmployees(employees.filter(emp => !ids.includes(emp.id)));
   };
 
   // Excel Bulk Import Employees (Admin)
-  const handleImportEmployees = async (imported: Employee[]) => {
-    try {
-      const promises = imported.map(emp => 
-        fetch('/api/employees', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(emp)
-        })
-      );
-      await Promise.all(promises);
-      setEmployees([...employees, ...imported]);
-    } catch (err) {
-      console.error("Gagal melakukan impor massal ke database:", err);
-    }
+  const handleImportEmployees = (imported: Employee[]) => {
+    setEmployees([...employees, ...imported]);
   };
 
   // Input Invoice (Admin)
-  const handleAddInvoice = async (newInv: Invoice) => {
-    try {
-      const response = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newInv)
-      });
-      if (response.ok) {
-        setInvoices([newInv, ...invoices]);
-      }
-    } catch (err) {
-      console.error("Gagal menyimpan invoice ke database:", err);
-    }
+  const handleAddInvoice = (newInv: Invoice) => {
+    setInvoices([newInv, ...invoices]);
   };
 
   // Update Employee Salary structure (Finance)
-  const handleUpdateSalary = async (empId: string, basic: number, bonus: number) => {
-    const empToUpdate = employees.find(e => e.id === empId);
-    if (!empToUpdate) return;
-
-    const updatedEmp = { ...empToUpdate, basicSalary: basic, bonus };
-    try {
-      // Mengirim gabungan properti camelCase dan snake_case agar klop dengan server.ts
-      const bodyData = {
-        ...updatedEmp,
-        main_jobdesk: empToUpdate.mainJobdesk,
-        basic_salary: basic,
-        bonus: bonus
-      };
-
-      const response = await fetch(`/api/employees/${empId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData)
-      });
-
-      if (response.ok) {
-        setEmployees(employees.map(emp => emp.id === empId ? updatedEmp : emp));
-      }
-    } catch (err) {
-      console.error("Gagal merubah data struktur gaji di database:", err);
-    }
+  const handleUpdateSalary = (empId: string, basic: number, bonus: number) => {
+    setEmployees(employees.map(emp => emp.id === empId ? { ...emp, basicSalary: basic, bonus } : emp));
   };
 
   // Execute Payment (Finance)
-  const handlePaySalary = async (newPayroll: Payroll) => {
-    try {
-      const response = await fetch('/api/payroll', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPayroll)
-      });
-      if (response.ok) {
-        setPayrolls([newPayroll, ...payrolls]);
-      }
-    } catch (err) {
-      console.error("Gagal menyimpan payroll ke database:", err);
-    }
+  const handlePaySalary = (newPayroll: Payroll) => {
+    setPayrolls([newPayroll, ...payrolls]);
   };
 
   // Login handler
@@ -368,7 +238,6 @@ export default function App() {
     const hashedInput = await hashPassword(loginPassword);
 
     if (loginPassword === user.passwordHash || hashedInput === user.passwordHash || user.passwordHash === '123456') {
-      // SIMPAN KE STATE & LOCALSTORAGE
       setCurrentUser(user);
       localStorage.setItem('sita_user_session', JSON.stringify(user));
       
@@ -379,12 +248,12 @@ export default function App() {
     }
   };
 
-// Quick Account Login Selector
+  // Quick Account Login Selector
   const triggerQuickLogin = (role: UserRole) => {
     const matched = employees.find(emp => emp.role === role);
     if (matched) {
       setCurrentUser(matched);
-      localStorage.setItem('sita_user_session', JSON.stringify(matched)); // Tambahkan ini
+      localStorage.setItem('sita_user_session', JSON.stringify(matched));
       setAuthError(null);
     }
   };
@@ -392,7 +261,6 @@ export default function App() {
   const triggerQuickLoginByUsername = (username: string) => {
     const matched = employees.find(emp => emp.username.trim().toLowerCase() === username.trim().toLowerCase());
     if (matched) {
-      // SIMPAN KE STATE & LOCALSTORAGE
       setCurrentUser(matched);
       localStorage.setItem('sita_user_session', JSON.stringify(matched));
       setAuthError(null);
@@ -401,7 +269,6 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
-    // HAPUS DARI LOCALSTORAGE SAAT LOGOUT
     localStorage.removeItem('sita_user_session');
     setSidebarOpen(false);
   };
@@ -554,7 +421,7 @@ export default function App() {
               </div>
             )}
 
-            {/* QUICK SANDBOX ACCOUNTS LOGIN PANEL (PLACED AT TOP LIKE IMAGE) */}
+            {/* QUICK SANDBOX ACCOUNTS LOGIN PANEL */}
             <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px', marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
                 <i className="fa-solid fa-key" style={{ color: '#64748b' }}></i> KREDENSI UJI COBA CEPAT:
