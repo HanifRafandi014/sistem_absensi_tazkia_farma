@@ -1,5 +1,5 @@
 export type UserRole = 'staff' | 'acc finance' | 'admin' | 'owner';
-
+export type JenisFakturType = 'Kongsionasi' | 'Pembelian' | 'SP OOT';
 export interface Employee {
   id: string; // e.g., AB01, AB02
   name: string;
@@ -54,6 +54,8 @@ export interface Invoice {
   id: string;
   invoiceNo: string;
   branchName: string;
+  jenisFaktur: JenisFakturType;
+  namaSupplier: string;
   date: string; // YYYY-MM-DD
   total: number;
   invoicePhoto: string | null; // base64 data url

@@ -18,6 +18,8 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
   // Form Fields
   const [invoiceNo, setInvoiceNo] = useState('');
   const [branchName, setBranchName] = useState('Cabang Jakarta Pusat');
+  const [jenisFaktur, setJenisFaktur] = useState<'Kongsionasi' | 'Pembelian' | 'SP OOT'>('Pembelian');
+  const [namaSupplier, setNamaSupplier] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [total, setTotal] = useState<number>(0);
   const [invoicePhoto, setInvoicePhoto] = useState<string | null>(null);
@@ -26,6 +28,7 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
   // Table Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBranch, setFilterBranch] = useState('All');
+  const [filterJenisFaktur, setFilterJenisFaktur] = useState('All');
   const [filterMonth, setFilterMonth] = useState('All');
 
   // Pagination State
@@ -38,13 +41,16 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
   // Filter list
   const getFilteredInvoices = () => {
     return invoices.filter(inv => {
-      const matchSearch = inv.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        inv.branchName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = 
+        inv.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        inv.branchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (inv.namaSupplier && inv.namaSupplier.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchBranch = filterBranch === 'All' || inv.branchName === filterBranch;
+      const matchJenis = filterJenisFaktur === 'All' || inv.jenisFaktur === filterJenisFaktur;
       const matchMonth = filterMonth === 'All' || inv.date.startsWith(filterMonth);
 
-      return matchSearch && matchBranch && matchMonth;
+      return matchSearch && matchBranch && matchJenis && matchMonth;
     });
   };
 
@@ -82,6 +88,11 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
       return;
     }
 
+    if (!namaSupplier.trim()) {
+      alert('Harap isi Nama Supplier!');
+      return;
+    }
+
     // Check duplicate
     if (invoices.some(inv => inv.invoiceNo.toLowerCase() === invoiceNo.trim().toLowerCase())) {
       alert('Nomor Faktur sudah terdaftar sebelumnya!');
@@ -92,6 +103,8 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
       id: 'INV_' + Date.now().toString().slice(-6),
       invoiceNo: invoiceNo.trim(),
       branchName,
+      jenisFaktur,
+      namaSupplier: namaSupplier.trim(),
       date,
       total,
       invoicePhoto
@@ -99,6 +112,8 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
 
     onAddInvoice(newInv);
     setInvoiceNo('');
+    setNamaSupplier('');
+    setJenisFaktur('Pembelian');
     setTotal(0);
     setInvoicePhoto(null);
     setFeedback('Faktur belanja baru berhasil diinput ke sistem!');
@@ -116,6 +131,8 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
       'ID Faktur': inv.id,
       'Nomor Faktur': inv.invoiceNo,
       'Cabang': inv.branchName,
+      'Jenis Faktur': inv.jenisFaktur,
+      'Nama Supplier': inv.namaSupplier,
       'Tanggal Input': inv.date,
       'Total Belanja (Rp)': inv.total
     }));
@@ -181,6 +198,34 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
                   <option value="Cabang Surabaya Barat">Cabang Surabaya Barat</option>
                   <option value="Cabang Head Office">Cabang Head Office</option>
                 </select>
+              </div>
+
+              {/* Jenis Faktur */}
+              <div className="form-group">
+                <label className="form-label">Jenis Faktur <span>*</span></label>
+                <select
+                  className="form-control"
+                  value={jenisFaktur}
+                  onChange={(e) => setJenisFaktur(e.target.value as any)}
+                  required
+                >
+                  <option value="Pembelian">Pembelian</option>
+                  <option value="Kongsionasi">Kongsionasi</option>
+                  <option value="SP OOT">SP OOT</option>
+                </select>
+              </div>
+
+              {/* Nama Supplier */}
+              <div className="form-group">
+                <label className="form-label">Nama Supplier <span>*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Contoh: PT. Kimia Farma / Distributor Jaya"
+                  value={namaSupplier}
+                  onChange={(e) => setNamaSupplier(e.target.value)}
+                  required
+                />
               </div>
 
               {/* Date */}
@@ -272,7 +317,7 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
               <input
                 type="text"
                 className="search-input"
-                placeholder="Cari nomor faktur..."
+                placeholder="Cari nomor faktur / supplier..."
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
@@ -289,6 +334,18 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
                 {branches.map(b => (
                   <option key={b} value={b}>{b}</option>
                 ))}
+              </select>
+
+              {/* Jenis Faktur Filter */}
+              <select
+                className="filter-select"
+                value={filterJenisFaktur}
+                onChange={(e) => { setFilterJenisFaktur(e.target.value); setCurrentPage(1); }}
+              >
+                <option value="All">Semua Jenis Faktur</option>
+                <option value="Pembelian">Pembelian</option>
+                <option value="Kongsionasi">Kongsionasi</option>
+                <option value="SP OOT">SP OOT</option>
               </select>
 
               {/* Month Filter */}
@@ -314,6 +371,8 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
                   <th>ID Faktur</th>
                   <th>Nomor Faktur Belanja</th>
                   <th>Cabang Operasional</th>
+                  <th>Jenis Faktur</th>
+                  <th>Nama Supplier</th>
                   <th>Tanggal Input</th>
                   <th>Total Pengeluaran (Rp)</th>
                   <th style={{ textAlign: 'center' }}>Pratinjau Nota Bukti</th>
@@ -327,6 +386,15 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
                       <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{inv.id}</td>
                       <td style={{ fontWeight: 600 }}>{inv.invoiceNo}</td>
                       <td>{inv.branchName}</td>
+                      <td>
+                        <span className={`badge ${
+                          inv.jenisFaktur === 'Pembelian' ? 'badge-info' : 
+                          inv.jenisFaktur === 'Kongsionasi' ? 'badge-warning' : 'badge-secondary'
+                        }`}>
+                          {inv.jenisFaktur || '-'}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 500 }}>{inv.namaSupplier || '-'}</td>
                       <td>{inv.date}</td>
                       <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--danger)' }}>
                         {formatRupiah(inv.total)}
@@ -350,7 +418,7 @@ export const ModuleFaktur: React.FC<ModuleFakturProps> = ({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                       <i className="fa-solid fa-file-excel" style={{ fontSize: '2.5rem', display: 'block', marginBottom: '10px' }}></i>
                       Belum ada faktur belanja kantor yang diinput.
                     </td>

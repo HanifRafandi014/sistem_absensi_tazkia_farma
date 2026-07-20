@@ -8,14 +8,6 @@ import {
   Payroll, 
   UserRole 
 } from './types';
-import { 
-  INITIAL_EMPLOYEES, 
-  INITIAL_ATTENDANCE, 
-  INITIAL_DAILY_REPORTS, 
-  INITIAL_SHIFTS, 
-  INITIAL_INVOICES, 
-  INITIAL_PAYROLL 
-} from './initialData';
 import { hashPassword, getJakartaDateTime } from './utils';
 
 // Component Imports
@@ -30,39 +22,16 @@ import ModuleKaryawan from './components/ModuleKaryawan';
 import ModuleFaktur from './components/ModuleFaktur';
 import ModuleLaporan from './components/ModuleLaporan';
 import ModulePayroll from './components/ModulePayroll';
-import ModuleSqlExport from './components/ModuleSqlExport';
+// import ModuleSqlExport from './components/ModuleSqlExport';
 
 export default function App() {
-  // --- 1. CORE SYSTEM DATABASES (React States linked with LocalStorage) ---
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    const saved = localStorage.getItem('sita_employees');
-    return saved ? JSON.parse(saved) : INITIAL_EMPLOYEES;
-  });
-
-  const [attendances, setAttendances] = useState<Attendance[]>(() => {
-    const saved = localStorage.getItem('sita_attendances');
-    return saved ? JSON.parse(saved) : INITIAL_ATTENDANCE;
-  });
-
-  const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => {
-    const saved = localStorage.getItem('sita_daily_reports');
-    return saved ? JSON.parse(saved) : INITIAL_DAILY_REPORTS;
-  });
-
-  const [shifts, setShifts] = useState<ShiftSchedule[]>(() => {
-    const saved = localStorage.getItem('sita_shifts');
-    return saved ? JSON.parse(saved) : INITIAL_SHIFTS;
-  });
-
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('sita_invoices');
-    return saved ? JSON.parse(saved) : INITIAL_INVOICES;
-  });
-
-  const [payrolls, setPayrolls] = useState<Payroll[]>(() => {
-    const saved = localStorage.getItem('sita_payrolls');
-    return saved ? JSON.parse(saved) : INITIAL_PAYROLL;
-  });
+  // --- 1. CORE SYSTEM DATABASES (React States) ---
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
+  const [shifts, setShifts] = useState<ShiftSchedule[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payrolls, setPayrolls] = useState<Payroll[]>([]);
 
   // --- 2. AUTHENTICATION & PORTAL STATES ---
   const [currentUser, setCurrentUser] = useState<Employee | null>(() => {
@@ -74,7 +43,38 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // --- 3. SYSTEM DATE & TIME ENGINE (Real-time Asia/Jakarta) ---
+  // --- 3. SINKRONISASI DATA DARI API BACKEND ---
+  const BASE_URL = 'http://localhost:3000';
+
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        const resEmp = await fetch(`${BASE_URL}/api/employees`);
+        if (resEmp.ok) setEmployees(await resEmp.json());
+
+        const resAtt = await fetch(`${BASE_URL}/api/attendance`);
+        if (resAtt.ok) setAttendances(await resAtt.json());
+
+        const resShifts = await fetch(`${BASE_URL}/api/shifts`);
+        if (resShifts.ok) setShifts(await resShifts.json());
+
+        const resDaily = await fetch(`${BASE_URL}/api/daily-reports`);
+        if (resDaily.ok) setDailyReports(await resDaily.json());
+
+        const resInvoices = await fetch(`${BASE_URL}/api/invoices`);
+        if (resInvoices.ok) setInvoices(await resInvoices.json());
+
+        const resPayroll = await fetch(`${BASE_URL}/api/payroll`);
+        if (resPayroll.ok) setPayrolls(await resPayroll.json());
+      } catch (err) {
+        console.error("⚠️ Gagal sinkronisasi data dari API Server Express:", err);
+      }
+    };
+
+    fetchAllData();
+  }, []);
+
+  // --- 4. SYSTEM DATE & TIME ENGINE (Real-time Asia/Jakarta) ---
   const [simulatedDate, setSimulatedDate] = useState(() => getJakartaDateTime().dateStr);
   const [simulatedTime, setSimulatedTime] = useState(() => getJakartaDateTime().timeStr);
 
@@ -85,33 +85,7 @@ export default function App() {
   // --- VISUAL DESIGN PRESETS HUB ENGINE ---
   const [designTheme, setDesignTheme] = useState<string>('clean-light');
 
-  // --- PERSISTENCE AUTOMATION EFFECTS ---
   useEffect(() => {
-    localStorage.setItem('sita_employees', JSON.stringify(employees));
-  }, [employees]);
-
-  useEffect(() => {
-    localStorage.setItem('sita_attendances', JSON.stringify(attendances));
-  }, [attendances]);
-
-  useEffect(() => {
-    localStorage.setItem('sita_daily_reports', JSON.stringify(dailyReports));
-  }, [dailyReports]);
-
-  useEffect(() => {
-    localStorage.setItem('sita_shifts', JSON.stringify(shifts));
-  }, [shifts]);
-
-  useEffect(() => {
-    localStorage.setItem('sita_invoices', JSON.stringify(invoices));
-  }, [invoices]);
-
-  useEffect(() => {
-    localStorage.setItem('sita_payrolls', JSON.stringify(payrolls));
-  }, [payrolls]);
-
-  useEffect(() => {
-    // Apply theme class to document element
     const root = document.documentElement;
     root.classList.remove('theme-clean-light', 'theme-glass-slate', 'theme-nordic-sage');
     root.classList.add(`theme-${designTheme}`);
@@ -142,86 +116,230 @@ export default function App() {
   useEffect(() => {
     if (currentUser) {
       if (currentUser.role === 'owner') {
-        setCurrentTab('laporan'); // Owner defaults to reports
+        setCurrentTab('laporan'); 
       } else {
-        setCurrentTab('absensi'); // Staff, Finance, and Staff IT (admin) do check-ins
+        setCurrentTab('absensi'); 
       }
     }
   }, [currentUser]);
 
-  // --- CORE APP ACTION HANDLERS (Now 100% Client-Side Pure Sync) ---
+  // --- CORE APP ACTION HANDLERS (Connected Directly to Express Network) ---
 
   // Check-In and Check-Out Attendance
-  const handleRecordAttendance = (newAtt: Attendance) => {
-    const existingIndex = attendances.findIndex(att => att.employeeId === newAtt.employeeId && att.date === newAtt.date);
-    if (existingIndex !== -1) {
-      const updated = [...attendances];
-      updated[existingIndex] = newAtt;
-      setAttendances(updated);
-    } else {
-      setAttendances([newAtt, ...attendances]);
+  const handleRecordAttendance = async (newAtt: Attendance) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAtt)
+      });
+      
+      if (response.ok) {
+        const existingIndex = attendances.findIndex(att => att.employeeId === newAtt.employeeId && att.date === newAtt.date);
+        if (existingIndex !== -1) {
+          const updated = [...attendances];
+          updated[existingIndex] = newAtt;
+          setAttendances(updated);
+        } else {
+          setAttendances([newAtt, ...attendances]);
+        }
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan absensi ke database:", err);
     }
   };
 
   // Add Daily Report Log
-  const handleAddReport = (newRep: DailyReport) => {
-    setDailyReports([newRep, ...dailyReports]);
+  const handleAddReport = async (newRep: DailyReport) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/daily-reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRep)
+      });
+      if (response.ok) {
+        setDailyReports([newRep, ...dailyReports]);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan laporan harian ke database:", err);
+    }
   };
 
   // Assign New Shift Schedule (Admin)
-  const handleAddShift = (newShift: ShiftSchedule) => {
-    setShifts([newShift, ...shifts]);
+  const handleAddShift = async (newShift: ShiftSchedule) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/shifts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newShift)
+      });
+      if (response.ok) {
+        setShifts([newShift, ...shifts]);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan shift ke database:", err);
+    }
   };
 
   // Delete Shift Schedule (Admin)
-  const handleDeleteShift = (id: string) => {
-    setShifts(shifts.filter(s => s.id !== id));
+  const handleDeleteShift = async (id: string) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/shifts/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setShifts(shifts.filter(s => s.id !== id));
+      }
+    } catch (err) {
+      console.error("Gagal menghapus shift dari database:", err);
+    }
   };
 
   // Add Employee (Admin CRUD)
-  const handleAddEmployee = (newEmp: Employee) => {
-    setEmployees([...employees, newEmp]);
+  const handleAddEmployee = async (newEmp: Employee) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/employees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEmp)
+      });
+      if (response.ok) {
+        setEmployees([...employees, newEmp]);
+      }
+    } catch (err) {
+      console.error("Gagal menambah karyawan ke database:", err);
+    }
   };
 
   // Update Employee (Admin CRUD)
-  const handleUpdateEmployee = (updatedEmp: Employee) => {
-    setEmployees(employees.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
-    
-    // Jika user saat ini memperbarui datanya sendiri, sesuaikan sesi aktif
-    if (currentUser && currentUser.id === updatedEmp.id) {
-      setCurrentUser(updatedEmp);
-      localStorage.setItem('sita_user_session', JSON.stringify(updatedEmp));
+  const handleUpdateEmployee = async (updatedEmp: Employee) => {
+    try {
+      const bodyData = {
+        ...updatedEmp,
+        main_jobdesk: updatedEmp.mainJobdesk,
+        basic_salary: updatedEmp.basicSalary,
+        bonus: updatedEmp.bonus
+      };
+
+      const response = await fetch(`${BASE_URL}/api/employees/${updatedEmp.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyData)
+      });
+
+      if (response.ok) {
+        setEmployees(employees.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
+        if (currentUser && currentUser.id === updatedEmp.id) {
+          setCurrentUser(updatedEmp);
+          localStorage.setItem('sita_user_session', JSON.stringify(updatedEmp));
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memperbarui data karyawan ke database:", err);
     }
   };
 
   // Delete Employee (Admin CRUD)
-  const handleDeleteEmployee = (id: string) => {
-    setEmployees(employees.filter(emp => emp.id !== id));
+  const handleDeleteEmployee = async (id: string) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/employees/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setEmployees(employees.filter(emp => emp.id !== id));
+      }
+    } catch (err) {
+      console.error("Gagal menghapus karyawan dari database:", err);
+    }
   };
 
   // Bulk Delete Employees (Admin CRUD)
-  const handleBulkDeleteEmployees = (ids: string[]) => {
-    setEmployees(employees.filter(emp => !ids.includes(emp.id)));
+  const handleBulkDeleteEmployees = async (ids: string[]) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/employees/bulk-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      if (response.ok) {
+        setEmployees(employees.filter(emp => !ids.includes(emp.id)));
+      }
+    } catch (err) {
+      console.error("Gagal menghapus massal karyawan:", err);
+    }
   };
 
   // Excel Bulk Import Employees (Admin)
-  const handleImportEmployees = (imported: Employee[]) => {
-    setEmployees([...employees, ...imported]);
+  const handleImportEmployees = async (imported: Employee[]) => {
+    try {
+      const promises = imported.map(emp => 
+        fetch(`${BASE_URL}/api/employees`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(emp)
+        })
+      );
+      await Promise.all(promises);
+      setEmployees([...employees, ...imported]);
+    } catch (err) {
+      console.error("Gagal melakukan impor massal ke database:", err);
+    }
   };
 
   // Input Invoice (Admin)
-  const handleAddInvoice = (newInv: Invoice) => {
-    setInvoices([newInv, ...invoices]);
+  const handleAddInvoice = async (newInv: Invoice) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/invoices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newInv)
+      });
+      if (response.ok) {
+        setInvoices([newInv, ...invoices]);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan invoice ke database:", err);
+    }
   };
 
   // Update Employee Salary structure (Finance)
-  const handleUpdateSalary = (empId: string, basic: number, bonus: number) => {
-    setEmployees(employees.map(emp => emp.id === empId ? { ...emp, basicSalary: basic, bonus } : emp));
+  const handleUpdateSalary = async (empId: string, basic: number, bonus: number) => {
+    const empToUpdate = employees.find(e => e.id === empId);
+    if (!empToUpdate) return;
+
+    const updatedEmp = { ...empToUpdate, basicSalary: basic, bonus };
+    try {
+      const bodyData = {
+        ...updatedEmp,
+        main_jobdesk: empToUpdate.mainJobdesk,
+        basic_salary: basic,
+        bonus: bonus
+      };
+
+      const response = await fetch(`${BASE_URL}/api/employees/${empId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyData)
+      });
+
+      if (response.ok) {
+        setEmployees(employees.map(emp => emp.id === empId ? updatedEmp : emp));
+      }
+    } catch (err) {
+      console.error("Gagal merubah data struktur gaji di database:", err);
+    }
   };
 
   // Execute Payment (Finance)
-  const handlePaySalary = (newPayroll: Payroll) => {
-    setPayrolls([newPayroll, ...payrolls]);
+  const handlePaySalary = async (newPayroll: Payroll) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/payroll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPayroll)
+      });
+      if (response.ok) {
+        setPayrolls([newPayroll, ...payrolls]);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan payroll ke database:", err);
+    }
   };
 
   // Login handler
@@ -248,16 +366,6 @@ export default function App() {
     }
   };
 
-  // Quick Account Login Selector
-  const triggerQuickLogin = (role: UserRole) => {
-    const matched = employees.find(emp => emp.role === role);
-    if (matched) {
-      setCurrentUser(matched);
-      localStorage.setItem('sita_user_session', JSON.stringify(matched));
-      setAuthError(null);
-    }
-  };
-
   const triggerQuickLoginByUsername = (username: string) => {
     const matched = employees.find(emp => emp.username.trim().toLowerCase() === username.trim().toLowerCase());
     if (matched) {
@@ -273,11 +381,9 @@ export default function App() {
     setSidebarOpen(false);
   };
 
-  // RENDER PORTAL LAYOUT OR LOGIN PAGE
   return (
     <div className={`app-root-container theme-${designTheme}`}>
       {currentUser ? (
-        // --- PORTAL LAYOUT ---
         <div style={{ display: 'flex', width: '100%', minHeight: '100vh' }}>
           
           <Sidebar
@@ -322,92 +428,21 @@ export default function App() {
                 />
               )}
 
-              {currentTab === 'riwayat' && (
-                <ModuleRiwayatAbsensi
-                  currentUser={currentUser}
-                  attendances={attendances}
-                />
-              )}
-
-              {currentTab === 'list_harian' && (
-                <ModuleDailyReport
-                  currentUser={currentUser}
-                  simulatedDate={simulatedDate}
-                  dailyReports={dailyReports}
-                  onAddReport={handleAddReport}
-                />
-              )}
-
-              {currentTab === 'jadwal' && (
-                <ModuleJadwalShift
-                  currentUser={currentUser}
-                  simulatedDate={simulatedDate}
-                  employees={employees}
-                  shifts={shifts}
-                  onAddShift={handleAddShift}
-                  onDeleteShift={handleDeleteShift}
-                />
-              )}
-
-              {currentTab === 'karyawan' && (
-                <ModuleKaryawan
-                  currentUser={currentUser}
-                  employees={employees}
-                  onAddEmployee={handleAddEmployee}
-                  onUpdateEmployee={handleUpdateEmployee}
-                  onDeleteEmployee={handleDeleteEmployee}
-                  onBulkDeleteEmployees={handleBulkDeleteEmployees}
-                  onImportEmployees={handleImportEmployees}
-                />
-              )}
-
-              {currentTab === 'faktur' && (
-                <ModuleFaktur
-                  currentUser={currentUser}
-                  invoices={invoices}
-                  onAddInvoice={handleAddInvoice}
-                />
-              )}
-
-              {currentTab === 'laporan' && (
-                <ModuleLaporan
-                  currentUser={currentUser}
-                  employees={employees}
-                  attendances={attendances}
-                />
-              )}
-
-              {currentTab === 'payroll' && (
-                <ModulePayroll
-                  currentUser={currentUser}
-                  employees={employees}
-                  payrolls={payrolls}
-                  onUpdateSalary={handleUpdateSalary}
-                  onPaySalary={handlePaySalary}
-                />
-              )}
-
-              {currentTab === 'sql_dump' && (
-                <ModuleSqlExport
-                  currentUser={currentUser}
-                  employees={employees}
-                  attendances={attendances}
-                  dailyReports={dailyReports}
-                  shifts={shifts}
-                  invoices={invoices}
-                  payrolls={payrolls}
-                />
-              )}
+              {currentTab === 'riwayat' && <ModuleRiwayatAbsensi currentUser={currentUser} attendances={attendances} />}
+              {currentTab === 'list_harian' && <ModuleDailyReport currentUser={currentUser} simulatedDate={simulatedDate} dailyReports={dailyReports} onAddReport={handleAddReport} />}
+              {currentTab === 'jadwal' && <ModuleJadwalShift currentUser={currentUser} simulatedDate={simulatedDate} employees={employees} shifts={shifts} onAddShift={handleAddShift} onDeleteShift={handleDeleteShift} />}
+              {currentTab === 'karyawan' && <ModuleKaryawan currentUser={currentUser} employees={employees} onAddEmployee={handleAddEmployee} onUpdateEmployee={handleUpdateEmployee} onDeleteEmployee={handleDeleteEmployee} onBulkDeleteEmployees={handleBulkDeleteEmployees} onImportEmployees={handleImportEmployees} />}
+              {currentTab === 'faktur' && <ModuleFaktur currentUser={currentUser} invoices={invoices} onAddInvoice={handleAddInvoice} />}
+              {currentTab === 'laporan' && <ModuleLaporan currentUser={currentUser} employees={employees} attendances={attendances} />}
+              {currentTab === 'payroll' && <ModulePayroll currentUser={currentUser} employees={employees} payrolls={payrolls} onUpdateSalary={handleUpdateSalary} onPaySalary={handlePaySalary} />}
+              {/* {currentTab === 'sql_dump' && <ModuleSqlExport currentUser={currentUser} employees={employees} attendances={attendances} dailyReports={dailyReports} shifts={shifts} invoices={invoices} payrolls={payrolls} />} */}
             </div>
           </div>
 
         </div>
       ) : (
-        // --- AUTHENTICATION LOGIN PAGE ---
         <div className="login-backdrop">
           <div className="login-card-container" style={{ maxWidth: '480px', borderRadius: '24px', padding: '42px', boxShadow: '0 10px 30px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9' }}>
-            
-            {/* Header Brand Logo */}
             <div className="login-logo-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px' }}>
               <Logo size={64} />
               <h1 className="login-title" style={{ fontSize: '1.6rem', fontWeight: '800', color: '#1e293b', marginTop: '16px', letterSpacing: '-0.02em' }}>Sistem Informasi Tazkia Farma</h1>
@@ -421,120 +456,33 @@ export default function App() {
               </div>
             )}
 
-            {/* QUICK SANDBOX ACCOUNTS LOGIN PANEL */}
-            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px', marginBottom: '24px' }}>
+            {/* <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px', marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
                 <i className="fa-solid fa-key" style={{ color: '#64748b' }}></i> KREDENSI UJI COBA CEPAT:
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => triggerQuickLoginByUsername('budi')} 
-                  style={{ padding: '6px 14px', borderRadius: '20px', border: '1.5px solid #818cf8', backgroundColor: '#ffffff', color: '#4f46e5', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                >
-                  Staf: Budi (budi)
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => triggerQuickLoginByUsername('hr')} 
-                  style={{ padding: '6px 14px', borderRadius: '20px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1e293b', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                >
-                  Finance: Ahmad (hr)
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => triggerQuickLoginByUsername('admin')} 
-                  style={{ padding: '6px 14px', borderRadius: '20px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1e293b', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                >
-                  Staff IT: Hanif (admin)
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => triggerQuickLoginByUsername('owner')} 
-                  style={{ padding: '6px 14px', borderRadius: '20px', border: '1.5px solid #10b981', backgroundColor: '#ffffff', color: '#047857', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                >
-                  Owner: Hendra (owner)
-                </button>
+                <button type="button" onClick={() => triggerQuickLoginByUsername('budi')} style={{ padding: '6px 14px', borderRadius: '20px', border: '1.5px solid #818cf8', backgroundColor: '#ffffff', color: '#4f46e5', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>Staf: Budi (budi)</button>
+                <button type="button" onClick={() => triggerQuickLoginByUsername('hr')} style={{ padding: '6px 14px', borderRadius: '20px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1e293b', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>Finance: Ahmad (hr)</button>
+                <button type="button" onClick={() => triggerQuickLoginByUsername('admin')} style={{ padding: '6px 14px', borderRadius: '20px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1e293b', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>Staff IT: Hanif (admin)</button>
+                <button type="button" onClick={() => triggerQuickLoginByUsername('owner')} style={{ padding: '6px 14px', borderRadius: '20px', border: '1.5px solid #10b981', backgroundColor: '#ffffff', color: '#047857', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>Owner: Hendra (owner)</button>
               </div>
-            </div>
+            </div> */}
 
-            {/* Login Form */}
             <form onSubmit={handleLoginSubmit}>
               <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '6px' }}>Username / Nama / ID Karyawan</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  style={{ 
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    border: '1.5px solid #e2e8f0',
-                    fontSize: '0.88rem',
-                    outline: 'none',
-                    transition: 'all 0.2s',
-                    backgroundColor: '#ffffff',
-                    color: '#1e293b'
-                  }}
-                  placeholder="Masukkan username"
-                  value={loginUsername}
-                  onChange={(e) => setLoginUsername(e.target.value)}
-                  required
-                />
+                <input type="text" className="form-control" style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '0.88rem' }} placeholder="Masukkan username" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} required />
               </div>
 
               <div className="form-group" style={{ marginBottom: '24px' }}>
                 <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '6px' }}>Kata Sandi (Password)</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  style={{ 
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    border: '1.5px solid #e2e8f0',
-                    fontSize: '0.88rem',
-                    outline: 'none',
-                    transition: 'all 0.2s',
-                    backgroundColor: '#ffffff',
-                    color: '#1e293b'
-                  }}
-                  placeholder="••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  required
-                />
+                <input type="password" className="form-control" style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '0.88rem' }} placeholder="•••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
               </div>
 
-              <button 
-                type="submit" 
-                className="btn" 
-                style={{ 
-                  width: '100%', 
-                  padding: '14px', 
-                  borderRadius: '12px', 
-                  fontSize: '0.92rem', 
-                  fontWeight: '700', 
-                  backgroundColor: '#6366f1', 
-                  border: 'none', 
-                  color: '#ffffff', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '8px', 
-                  cursor: 'pointer', 
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
-                  transition: 'all 0.2s'
-                }}
-              >
+              <button type="submit" className="btn" style={{ width: '100%', padding: '14px', borderRadius: '12px', fontSize: '0.92rem', fontWeight: '700', backgroundColor: '#6366f1', border: 'none', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
                 <i className="fa-solid fa-right-to-bracket"></i> Masuk ke Dashboard
               </button>
             </form>
-
-            <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.7rem', color: '#94a3b8' }}>
-              PT. Tazkia Farma &copy; 2026. Hak Cipta Dilindungi.
-            </div>
-
           </div>
         </div>
       )}

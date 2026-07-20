@@ -670,7 +670,8 @@ export const ModuleKaryawan: React.FC<ModuleKaryawanProps> = ({
                     onChange={(e) => setRole(e.target.value as UserRole)}
                     required
                   >
-                    <option value="staff">Staff Lapangan</option>
+                    <option value="staff">Staff Apotek</option>
+                    <option value="kepala">Kepala Apotek</option>
                     <option value="acc finance">Accounting Finance</option>
                     <option value="admin">Staff IT</option>
                     <option value="owner">Owner / Direksi</option>

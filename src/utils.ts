@@ -50,6 +50,18 @@ export const formatRupiah = (amount: number): string => {
   }).format(amount);
 };
 
+// --- TAMBAHAN BARU: Fungsi Hitung Selisih Menit ---
+// Menghitung selisih menit antara waktu aktual (aktual) dan waktu target (target)
+export const calculateTimeDiffInMinutes = (actualTimeStr: string, targetTimeStr: string): number => {
+  const [actualH, actualM] = actualTimeStr.split(':').map(Number);
+  const [targetH, targetM] = targetTimeStr.split(':').map(Number);
+  
+  const actualMinutes = actualH * 60 + actualM;
+  const targetMinutes = targetH * 60 + targetM;
+  
+  return actualMinutes - targetMinutes;
+};
+
 // Check if a check-in is late based on shift type and simulated time
 // Shift Pagi: 07:00. Shift Sore: 13:00.
 export const checkLateness = (shiftType: 'Pagi' | 'Sore', checkInTimeStr: string): { isLate: boolean; limitStr: string } => {

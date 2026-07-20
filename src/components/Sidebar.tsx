@@ -52,7 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'karyawan', label: 'Data Karyawan', icon: 'fa-users' },
           { id: 'faktur', label: 'Input Faktur Belanja', icon: 'fa-file-invoice-dollar' },
           { id: 'riwayat', label: 'Riwayat Absensi', icon: 'fa-history' },
-          { id: 'sql_dump', label: 'Ekspor SQL', icon: 'fa-database' },
+          // { id: 'sql_dump', label: 'Ekspor SQL', icon: 'fa-database' },
         ];
       case 'owner':
         return [
