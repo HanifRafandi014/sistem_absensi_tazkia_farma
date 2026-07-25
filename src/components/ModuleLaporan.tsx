@@ -30,7 +30,7 @@ export const ModuleLaporan: React.FC<ModuleLaporanProps> = ({
       : inRangeAtts.filter(a => a.employeeId === selectedEmpId);
 
     // List of employees to aggregate (only staff and finance who do attendance)
-    const activeEmployees = employees.filter(e => e.role === 'staff' || e.role === 'acc finance');
+    const activeEmployees = employees.filter(e => e.role === 'staff' || e.role === 'acc finance' || e.role === 'admin');
 
     const result = activeEmployees.map(emp => {
       const empAtts = inRangeAtts.filter(a => a.employeeId === emp.id);
@@ -222,7 +222,7 @@ export const ModuleLaporan: React.FC<ModuleLaporanProps> = ({
                 >
                   <option value="All">Semua Karyawan (Kumulatif)</option>
                   {employees
-                    .filter(emp => emp.role === 'staff' || emp.role === 'acc finance')
+                    .filter(emp => emp.role === 'staff' || emp.role === 'acc finance' || emp.role === 'admin')
                     .map(emp => (
                       <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>
                     ))}
